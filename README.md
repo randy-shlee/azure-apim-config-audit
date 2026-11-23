@@ -105,24 +105,27 @@ $foundryId = "/subscriptions/$subscriptionId/resourceGroups/$foundryResourceGrou
 
 ## CSV 필드와 결과 해석
 
-CSV는 **리소스 그룹 → APIM → API → 점검 항목 → 상태 → 저장 방식** 순서로 시작합니다. 각 APIM에서 API에 속하지 않는 서비스 범위 행이 먼저 나오고, 이후 같은 API의 행이 모여 있습니다. Excel에서 머리글에 필터를 걸어 리소스 그룹, APIM, API, `Check` 순서로 범위를 좁히면 됩니다. 한글이 깨지면 Excel의 **데이터 → 텍스트/CSV에서**로 가져와 UTF-8과 쉼표 구분을 선택하세요.
+CSV는 **리소스 그룹 → APIM → API → 점검 항목 → 상태 → 저장 방식**으로 시작하며, 바로 뒤의 **7~9번째 열**에 `ResourceName`, `ReferenceType`, `ReferencedBy`가 나옵니다. 각 APIM에서 API에 속하지 않는 서비스 범위 행이 먼저 나오고, 이후 같은 API의 행이 모여 있습니다. 한글이 깨지면 Excel의 **데이터 → 텍스트/CSV에서**로 가져와 UTF-8과 쉼표 구분을 선택하세요.
 
-아래는 [공개용 샘플 CSV](./docs/apim-audit-sample.csv)의 주요 열을 표시한 화면입니다. 오프라인 모의 테스트 결과만 사용했으며, 실제 Azure 구독·리소스·자격 증명은 포함하지 않습니다.
+아래는 [공개용 샘플 CSV](./docs/apim-audit-sample.csv)의 첫 9개 열입니다. 오프라인 모의 결과만 사용했으며, 실제 Azure 구독·리소스·자격 증명은 포함하지 않습니다.
 
-![모의 APIM 점검 CSV 미리보기: 리소스 그룹, APIM, API, 점검 항목, 한국어 상태·저장 방식·상세 설명](./docs/apim-audit-sample.png)
+![모의 APIM 점검 CSV 미리보기: 기본 6개 열 뒤에 ResourceName, ReferenceType, ReferencedBy가 표시됨](./docs/apim-audit-sample.png)
 
 | 필드 | 해석 |
 |---|---|
 | `ResourceGroupName`, `ApimName` | Azure 리소스 그룹과 APIM 인스턴스 이름입니다. |
 | `ApiName` | API 표시 이름이 아니라 ARM 리소스 이름입니다. API에 속하지 않는 점검은 빈칸입니다. Named Value 참조 행에서는 참조하는 API 이름을 표시합니다. |
 | `Check`, `Status`, `Storage` | 점검 코드, 결과 상태, 저장 방식입니다. 기존 필터와 자동화를 위해 영어 코드로 유지합니다. |
+| `ResourceName` | 점검 대상의 이름입니다. `NamedValueReference` 행에서는 참조하는 API 이름이 아니라 **참조되는 Named Value 이름**입니다. |
+| `ReferenceType` | 참조 또는 탐지 위치의 유형입니다. 예: `Policy`, `Fragment`, `Backend`. |
+| `ReferencedBy` | Named Value를 참조하는 정책·정책 조각·Backend의 경로입니다. 저장 방식만 확인한 행이나 참조를 찾지 못한 행은 빈칸입니다. |
 | `StatusKo`, `StorageKo` | 상태와 저장 방식의 한글 표시입니다. 저장 방식이 없는 점검은 `Storage`와 `StorageKo`가 모두 비어 있습니다. |
 | `WorkspaceName`, `ApiRevision`, `OperationName` | 하위 범위입니다. `ApiRevision`은 경로에 `;rev=`가 명시된 경우만 채워집니다. 빈칸은 리비전 점검 실패를 뜻하지 않습니다. |
-| `ResourceName` | 점검 대상의 이름입니다. 예를 들어 API가 Named Value를 참조하는 행의 `ResourceName`은 API가 아니라 Named Value 이름입니다. |
-| `ReferenceType` | 참조 또는 탐지 위치의 유형입니다. 예: `Policy`, `Fragment`, `Backend`. |
 | `DetailKo`, `Detail` | 한국어 설명이 영어 설명 바로 앞에 나옵니다. 원인, 조회 건수, 정책 XML 줄 번호, 오류 상태 코드 등이 포함될 수 있습니다. 줄 번호는 Azure가 반환한 XML 기준입니다. |
-| `Target`, `ReferencedBy` | `Target`은 점검 대상 경로, `ReferencedBy`는 그 대상을 참조하는 정책 또는 Backend 경로입니다. 정책에 직접 적힌 값의 탐지 행은 정책 경로를 `Target`에서 확인합니다. |
+| `Target` | 점검 대상 자체의 경로입니다. `NamedValueReference`에서는 `/namedValues/...`이고, `PolicyInlineCredential`처럼 정책에 직접 적힌 값을 찾은 행에서는 **정책 경로**입니다. |
 | `Source`, `CheckedAtUtc`, `ApimResourceId` | 결과 출처(실제 점검은 `Azure`, 공개용 샘플은 `Fixture`), 점검 기준 시각(UTC), APIM 전체 리소스 ID입니다. |
+
+**Named Value를 참조하는 곳만 보려면:** Excel에서 `Check = NamedValueReference`, `Status = StaticReference`로 필터링하고 `ResourceName` → `ReferenceType` → `ReferencedBy` 순으로 읽으세요. 같은 Named Value가 여러 곳에서 참조되면 여러 행으로 나옵니다. Backend나 전역 정책 참조는 `ApiName`이 비어 있어도 `ReferencedBy`에서 확인할 수 있습니다. 기존 CSV 연동이 열 번호를 기준으로 읽는다면 새 순서에 맞추거나 열 이름으로 읽도록 변경하세요.
 
 **주요 상태 해석**
 
