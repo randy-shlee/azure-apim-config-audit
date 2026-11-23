@@ -1,0 +1,10 @@
+# Generated audit and smoke-test reports may contain Azure identifiers.
+*.csv
+!/docs/apim-audit-sample.csv
+
+# Local deployment and test assets are not part of the public distribution.
+*.bicep
+*.bicepparam
+/Test-ApimAudit.ps1
+/Test-ApimLab.ps1
+/tests/
